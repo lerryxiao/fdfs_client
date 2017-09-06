@@ -7,11 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 )
 
 var (
-	logger                                          = logrus.New()
 	storagePoolChan      chan *storagePool          = make(chan *storagePool, 1)
 	storagePoolMap       map[string]*ConnectionPool = make(map[string]*ConnectionPool)
 	fetchStoragePoolChan chan interface{}           = make(chan interface{}, 1)
@@ -37,7 +35,6 @@ type storagePool struct {
 }
 
 func init() {
-	logger.Formatter = new(logrus.TextFormatter)
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	go func() {
 		// start a loop
@@ -69,7 +66,6 @@ func getTrackerConf(confPath string) (*Tracker, error) {
 	fc := &FdfsConfigParser{}
 	cf, err := fc.Read(confPath)
 	if err != nil {
-		logger.Errorf("Read conf error :%s", err)
 		return nil, err
 	}
 	trackerListString, _ := cf.RawString("DEFAULT", "tracker_server")

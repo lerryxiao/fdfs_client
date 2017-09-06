@@ -125,7 +125,6 @@ func (this *StorageClient) storageUploadFile(tc *TrackerClient,
 		reqBuf, err = req.marshal()
 	}
 	if err != nil {
-		logger.Warnf("uploadFileRequest.marshal error :%s", err.Error())
 		return nil, err
 	}
 	TcpSendData(conn, reqBuf)
@@ -141,7 +140,6 @@ func (this *StorageClient) storageUploadFile(tc *TrackerClient,
 		}
 	}
 	if err != nil {
-		logger.Warnf(err.Error())
 		return nil, err
 	}
 
@@ -153,14 +151,12 @@ func (this *StorageClient) storageUploadFile(tc *TrackerClient,
 	if recvSize <= int64(FDFS_GROUP_NAME_MAX_LEN) {
 		errmsg := "[-] Error: Storage response length is not match, "
 		errmsg += fmt.Sprintf("expect: %d, actual: %d", th.pkgLen, recvSize)
-		logger.Warn(errmsg)
 		return nil, errors.New(errmsg)
 	}
 	ur := &UploadFileResponse{}
 	err = ur.unmarshal(recvBuff)
 	if err != nil {
 		errmsg := fmt.Sprintf("recvBuf can not unmarshal :%s", err.Error())
-		logger.Warn(errmsg)
 		return nil, errors.New(errmsg)
 	}
 
@@ -191,7 +187,6 @@ func (this *StorageClient) storageDeleteFile(tc *TrackerClient, storeServ *Stora
 	req.remoteFilename = remoteFilename
 	reqBuf, err = req.marshal()
 	if err != nil {
-		logger.Warnf("deleteFileRequest.marshal error :%s", err.Error())
 		return err
 	}
 	TcpSendData(conn, reqBuf)
@@ -246,7 +241,6 @@ func (this *StorageClient) storageDownloadFile(tc *TrackerClient,
 	req.remoteFilename = remoteFilename
 	reqBuf, err = req.marshal()
 	if err != nil {
-		logger.Warnf("downloadFileRequest.marshal error :%s", err.Error())
 		return nil, err
 	}
 	TcpSendData(conn, reqBuf)
@@ -267,13 +261,11 @@ func (this *StorageClient) storageDownloadFile(tc *TrackerClient,
 		}
 	}
 	if err != nil {
-		logger.Warnf(err.Error())
 		return nil, err
 	}
 	if recvSize < downloadSize {
 		errmsg := "[-] Error: Storage response length is not match, "
 		errmsg += fmt.Sprintf("expect: %d, actual: %d", th.pkgLen, recvSize)
-		logger.Warn(errmsg)
 		return nil, errors.New(errmsg)
 	}
 
