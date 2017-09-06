@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io"
 	"net"
-	"os"
 )
 
 const (
