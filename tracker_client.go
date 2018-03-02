@@ -6,18 +6,19 @@ import (
 	"net"
 )
 
+// TrackerClient 追踪客户端
 type TrackerClient struct {
 	pool *ConnectionPool
 }
 
-func (this *TrackerClient) trackerQueryStorageStorWithoutGroup() (*StorageServer, error) {
+func (client *TrackerClient) trackerQueryStorageStorWithoutGroup() (*StorageServer, error) {
 	var (
 		conn     net.Conn
 		recvBuff []byte
 		err      error
 	)
 
-	conn, err = this.pool.Get()
+	conn, err = client.pool.Get()
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +39,7 @@ func (this *TrackerClient) trackerQueryStorageStorWithoutGroup() (*StorageServer
 		port           int64
 		storePathIndex uint8
 	)
-	recvBuff, _, err = TcpRecvResponse(conn, th.pkgLen)
+	recvBuff, _, err = TCPRecvResponse(conn, th.pkgLen)
 	if err != nil {
 		return nil, err
 	}
@@ -51,14 +52,14 @@ func (this *TrackerClient) trackerQueryStorageStorWithoutGroup() (*StorageServer
 	return &StorageServer{ipAddr, int(port), groupName, int(storePathIndex)}, nil
 }
 
-func (this *TrackerClient) trackerQueryStorageStorWithGroup(groupName string) (*StorageServer, error) {
+func (client *TrackerClient) trackerQueryStorageStorWithGroup(groupName string) (*StorageServer, error) {
 	var (
 		conn     net.Conn
 		recvBuff []byte
 		err      error
 	)
 
-	conn, err = this.pool.Get()
+	conn, err = client.pool.Get()
 	defer conn.Close()
 	if err != nil {
 		return nil, err
@@ -81,7 +82,7 @@ func (this *TrackerClient) trackerQueryStorageStorWithGroup(groupName string) (*
 	}
 	groupBytes := groupBuffer.Bytes()
 
-	err = TcpSendData(conn, groupBytes)
+	err = TCPSendData(conn, groupBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +97,7 @@ func (this *TrackerClient) trackerQueryStorageStorWithGroup(groupName string) (*
 		port           int64
 		storePathIndex uint8
 	)
-	recvBuff, _, err = TcpRecvResponse(conn, th.pkgLen)
+	recvBuff, _, err = TCPRecvResponse(conn, th.pkgLen)
 	if err != nil {
 		return nil, err
 	}
@@ -109,22 +110,22 @@ func (this *TrackerClient) trackerQueryStorageStorWithGroup(groupName string) (*
 	return &StorageServer{ipAddr, int(port), groupName, int(storePathIndex)}, nil
 }
 
-func (this *TrackerClient) trackerQueryStorageUpdate(groupName string, remoteFilename string) (*StorageServer, error) {
-	return this.trackerQueryStorage(groupName, remoteFilename, TRACKER_PROTO_CMD_SERVICE_QUERY_UPDATE)
+func (client *TrackerClient) trackerQueryStorageUpdate(groupName string, remoteFilename string) (*StorageServer, error) {
+	return client.trackerQueryStorage(groupName, remoteFilename, TRACKER_PROTO_CMD_SERVICE_QUERY_UPDATE)
 }
 
-func (this *TrackerClient) trackerQueryStorageFetch(groupName string, remoteFilename string) (*StorageServer, error) {
-	return this.trackerQueryStorage(groupName, remoteFilename, TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE)
+func (client *TrackerClient) trackerQueryStorageFetch(groupName string, remoteFilename string) (*StorageServer, error) {
+	return client.trackerQueryStorage(groupName, remoteFilename, TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE)
 }
 
-func (this *TrackerClient) trackerQueryStorage(groupName string, remoteFilename string, cmd int8) (*StorageServer, error) {
+func (client *TrackerClient) trackerQueryStorage(groupName string, remoteFilename string, cmd int8) (*StorageServer, error) {
 	var (
 		conn     net.Conn
 		recvBuff []byte
 		err      error
 	)
 
-	conn, err = this.pool.Get()
+	conn, err = client.pool.Get()
 	defer conn.Close()
 	if err != nil {
 		return nil, err
@@ -151,7 +152,7 @@ func (this *TrackerClient) trackerQueryStorage(groupName string, remoteFilename 
 	for i := 0; i < len(remoteFilenameBytes); i++ {
 		queryBuffer.WriteByte(remoteFilenameBytes[i])
 	}
-	err = TcpSendData(conn, queryBuffer.Bytes())
+	err = TCPSendData(conn, queryBuffer.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +167,7 @@ func (this *TrackerClient) trackerQueryStorage(groupName string, remoteFilename 
 		port           int64
 		storePathIndex uint8
 	)
-	recvBuff, _, err = TcpRecvResponse(conn, th.pkgLen)
+	recvBuff, _, err = TCPRecvResponse(conn, th.pkgLen)
 	if err != nil {
 		return nil, err
 	}

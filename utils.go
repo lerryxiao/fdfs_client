@@ -10,6 +10,7 @@ import (
 	"github.com/weilaihui/goconfig/config"
 )
 
+// Errno 错误
 type Errno struct {
 	status int
 }
@@ -25,13 +26,15 @@ func (e Errno) Error() string {
 	return errmsg
 }
 
+// FdfsConfigParser 配置文件解析器
 type FdfsConfigParser struct{}
 
 var (
+	// ConfigFile 配置文件
 	ConfigFile *config.Config
 )
 
-func (this *FdfsConfigParser) Read(filename string) (*config.Config, error) {
+func (parser *FdfsConfigParser) Read(filename string) (*config.Config, error) {
 	return config.ReadDefault(filename)
 }
 
@@ -65,8 +68,8 @@ func getFileExt(filename string) string {
 	return ""
 }
 
-func splitRemoteFileId(remoteFileId string) ([]string, error) {
-	parts := strings.SplitN(remoteFileId, "/", 2)
+func splitRemoteFileID(remoteFileID string) ([]string, error) {
+	parts := strings.SplitN(remoteFileID, "/", 2)
 	if len(parts) < 2 {
 		return nil, errors.New("error remoteFileId")
 	}

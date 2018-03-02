@@ -10,7 +10,10 @@ import (
 	"time"
 )
 
-var ErrClosed = errors.New("pool is closed")
+var (
+	// ErrClosed close错误
+	ErrClosed = errors.New("pool is closed")
+)
 
 type pConn struct {
 	net.Conn
@@ -21,6 +24,7 @@ func (c pConn) Close() error {
 	return c.pool.put(c.Conn)
 }
 
+// ConnectionPool 连接池
 type ConnectionPool struct {
 	hosts    []string
 	port     int
@@ -29,6 +33,7 @@ type ConnectionPool struct {
 	conns    chan net.Conn
 }
 
+// NewConnectionPool 新连接池
 func NewConnectionPool(hosts []string, port int, minConns int, maxConns int) (*ConnectionPool, error) {
 	if minConns < 0 || maxConns <= 0 || minConns > maxConns {
 		return nil, errors.New("invalid conns settings")
@@ -51,8 +56,9 @@ func NewConnectionPool(hosts []string, port int, minConns int, maxConns int) (*C
 	return cp, nil
 }
 
-func (this *ConnectionPool) Get() (net.Conn, error) {
-	conns := this.getConns()
+// Get 获取
+func (pool *ConnectionPool) Get() (net.Conn, error) {
+	conns := pool.getConns()
 	if conns == nil {
 		return nil, ErrClosed
 	}
@@ -64,21 +70,20 @@ func (this *ConnectionPool) Get() (net.Conn, error) {
 				break
 				//return nil, ErrClosed
 			}
-			if err := this.activeConn(conn); err != nil {
+			if err := pool.activeConn(conn); err != nil {
 				break
 			}
-			return this.wrapConn(conn), nil
+			return pool.wrapConn(conn), nil
 		default:
-			if this.Len() >= this.maxConns {
-				errmsg := fmt.Sprintf("Too many connctions %d", this.Len())
+			if pool.Len() >= pool.maxConns {
+				errmsg := fmt.Sprintf("Too many connctions %d", pool.Len())
 				return nil, errors.New(errmsg)
 			}
-			conn, err := this.makeConn()
+			conn, err := pool.makeConn()
 			if err != nil {
 				return nil, err
 			}
-
-			this.conns <- conn
+			pool.conns <- conn
 			//put connection to pool and go next `for` loop
 			//return this.wrapConn(conn), nil
 		}
@@ -86,9 +91,10 @@ func (this *ConnectionPool) Get() (net.Conn, error) {
 
 }
 
-func (this *ConnectionPool) Close() {
-	conns := this.conns
-	this.conns = nil
+// Close 关闭
+func (pool *ConnectionPool) Close() {
+	conns := pool.conns
+	pool.conns = nil
 
 	if conns == nil {
 		return
@@ -101,44 +107,45 @@ func (this *ConnectionPool) Close() {
 	}
 }
 
-func (this *ConnectionPool) Len() int {
-	return len(this.getConns())
+// Len 长度
+func (pool *ConnectionPool) Len() int {
+	return len(pool.getConns())
 }
 
-func (this *ConnectionPool) makeConn() (net.Conn, error) {
-	host := this.hosts[rand.Intn(len(this.hosts))]
-	addr := fmt.Sprintf("%s:%d", host, this.port)
+func (pool *ConnectionPool) makeConn() (net.Conn, error) {
+	host := pool.hosts[rand.Intn(len(pool.hosts))]
+	addr := fmt.Sprintf("%s:%d", host, pool.port)
 	return net.DialTimeout("tcp", addr, time.Minute)
 }
 
-func (this *ConnectionPool) getConns() chan net.Conn {
-	conns := this.conns
+func (pool *ConnectionPool) getConns() chan net.Conn {
+	conns := pool.conns
 	return conns
 }
 
-func (this *ConnectionPool) put(conn net.Conn) error {
+func (pool *ConnectionPool) put(conn net.Conn) error {
 	if conn == nil {
 		return errors.New("connection is nil")
 	}
-	if this.conns == nil {
+	if pool.conns == nil {
 		return conn.Close()
 	}
 
 	select {
-	case this.conns <- conn:
+	case pool.conns <- conn:
 		return nil
 	default:
 		return conn.Close()
 	}
 }
 
-func (this *ConnectionPool) wrapConn(conn net.Conn) net.Conn {
-	c := pConn{pool: this}
+func (pool *ConnectionPool) wrapConn(conn net.Conn) net.Conn {
+	c := pConn{pool: pool}
 	c.Conn = conn
 	return c
 }
 
-func (this *ConnectionPool) activeConn(conn net.Conn) error {
+func (pool *ConnectionPool) activeConn(conn net.Conn) error {
 	th := &trackerHeader{}
 	th.cmd = FDFS_PROTO_CMD_ACTIVE_TEST
 	th.sendHeader(conn)
@@ -149,21 +156,23 @@ func (this *ConnectionPool) activeConn(conn net.Conn) error {
 	return errors.New("Conn unaliviable")
 }
 
-func TcpSendData(conn net.Conn, bytesStream []byte) error {
+// TCPSendData tcp发送数据
+func TCPSendData(conn net.Conn, bytesStream []byte) error {
 	if _, err := conn.Write(bytesStream); err != nil {
 		return err
 	}
 	return nil
 }
 
-func TcpSendFile(conn net.Conn, filename string) error {
+// TCPSendFile tcp发送文件
+func TCPSendFile(conn net.Conn, filename string) error {
 	file, err := os.Open(filename)
 	defer file.Close()
 	if err != nil {
 		return err
 	}
 
-	var fileSize int64 = 0
+	var fileSize int64
 	if fileInfo, err := file.Stat(); err == nil {
 		fileSize = fileInfo.Size()
 	}
@@ -179,11 +188,11 @@ func TcpSendFile(conn net.Conn, filename string) error {
 	if err != nil {
 		return err
 	}
-
-	return TcpSendData(conn, fileBuffer)
+	return TCPSendData(conn, fileBuffer)
 }
 
-func TcpRecvResponse(conn net.Conn, bufferSize int64) ([]byte, int64, error) {
+// TCPRecvResponse tcp接收数据
+func TCPRecvResponse(conn net.Conn, bufferSize int64) ([]byte, int64, error) {
 	recvBuff := make([]byte, 0, bufferSize)
 	tmp := make([]byte, 256)
 	var total int64
@@ -204,14 +213,15 @@ func TcpRecvResponse(conn net.Conn, bufferSize int64) ([]byte, int64, error) {
 	return recvBuff, total, nil
 }
 
-func TcpRecvFile(conn net.Conn, localFilename string, bufferSize int64) (int64, error) {
+// TCPRecvFile tcp接收文件
+func TCPRecvFile(conn net.Conn, localFilename string, bufferSize int64) (int64, error) {
 	file, err := os.Create(localFilename)
 	defer file.Close()
 	if err != nil {
 		return 0, err
 	}
 
-	recvBuff, total, err := TcpRecvResponse(conn, bufferSize)
+	recvBuff, total, err := TCPRecvResponse(conn, bufferSize)
 	if _, err := file.Write(recvBuff); err != nil {
 		return 0, err
 	}

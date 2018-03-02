@@ -143,18 +143,23 @@ const (
 	FDFS_STORAGE_STATUS_NONE       = 99
 )
 
+// Request 请求
 type Request interface {
 	marshal() ([]byte, error)
 }
+
+// Response 返回
 type Response interface {
 	unmarshal([]byte) error
 }
 
+// RequestResponse 请求返回
 type RequestResponse interface {
 	Request
 	Response
 }
 
+// StorageServer 存储服务
 type StorageServer struct {
 	ipAddr         string
 	port           int
@@ -168,40 +173,39 @@ type trackerHeader struct {
 	status int8
 }
 
-func (this *trackerHeader) marshal() ([]byte, error) {
+func (tracker *trackerHeader) marshal() ([]byte, error) {
 	buffer := new(bytes.Buffer)
-	binary.Write(buffer, binary.BigEndian, this.pkgLen)
-	buffer.WriteByte(byte(this.cmd))
-	buffer.WriteByte(byte(this.status))
+	binary.Write(buffer, binary.BigEndian, tracker.pkgLen)
+	buffer.WriteByte(byte(tracker.cmd))
+	buffer.WriteByte(byte(tracker.status))
 	return buffer.Bytes(), nil
 }
 
-func (this *trackerHeader) unmarshal(data []byte) error {
+func (tracker *trackerHeader) unmarshal(data []byte) error {
 	if len(data) != 10 {
 		return errors.New("data less than 10")
 	}
 	buff := bytes.NewBuffer(data)
-	binary.Read(buff, binary.BigEndian, &this.pkgLen)
+	binary.Read(buff, binary.BigEndian, &tracker.pkgLen)
 	cmd, _ := buff.ReadByte()
 	status, _ := buff.ReadByte()
-	this.cmd = int8(cmd)
-	this.status = int8(status)
+	tracker.cmd = int8(cmd)
+	tracker.status = int8(status)
 	return nil
 }
 
-func (this *trackerHeader) sendHeader(conn net.Conn) {
-	buf, _ := this.marshal()
+func (tracker *trackerHeader) sendHeader(conn net.Conn) {
+	buf, _ := tracker.marshal()
 	conn.Write(buf)
 }
 
-func (this *trackerHeader) recvHeader(conn net.Conn) {
+func (tracker *trackerHeader) recvHeader(conn net.Conn) {
 	buf := make([]byte, 10)
 	_, err := io.ReadFull(conn, buf)
 	if err != nil {
 		return
 	}
-
-	err = this.unmarshal(buf)
+	err = tracker.unmarshal(buf)
 	if err != nil {
 		return
 	}
@@ -213,13 +217,13 @@ type uploadFileRequest struct {
 	fileExtName    string
 }
 
-func (this *uploadFileRequest) marshal() ([]byte, error) {
+func (tracker *uploadFileRequest) marshal() ([]byte, error) {
 	buffer := new(bytes.Buffer)
-	buffer.WriteByte(byte(this.storePathIndex))
-	binary.Write(buffer, binary.BigEndian, this.fileSize)
+	buffer.WriteByte(byte(tracker.storePathIndex))
+	binary.Write(buffer, binary.BigEndian, tracker.fileSize)
 
 	// 6 bit fileExtName
-	fileExtNameBytes := bytes.NewBufferString(this.fileExtName).Bytes()
+	fileExtNameBytes := bytes.NewBufferString(tracker.fileExtName).Bytes()
 	for i := 0; i < 6; i++ {
 		if i >= len(fileExtNameBytes) {
 			buffer.WriteByte(byte(0))
@@ -240,13 +244,13 @@ type uploadSlaveFileRequest struct {
 
 // #slave_fmt |-master_len(8)-file_size(8)-prefix_name(16)-file_ext_name(6)
 // #           -master_name(master_filename_len)-|
-func (this *uploadSlaveFileRequest) marshal() ([]byte, error) {
+func (tracker *uploadSlaveFileRequest) marshal() ([]byte, error) {
 	buffer := new(bytes.Buffer)
-	binary.Write(buffer, binary.BigEndian, this.masterFilenameLen)
-	binary.Write(buffer, binary.BigEndian, this.fileSize)
+	binary.Write(buffer, binary.BigEndian, tracker.masterFilenameLen)
+	binary.Write(buffer, binary.BigEndian, tracker.fileSize)
 
 	// 16 bit prefixName
-	prefixNameBytes := bytes.NewBufferString(this.prefixName).Bytes()
+	prefixNameBytes := bytes.NewBufferString(tracker.prefixName).Bytes()
 	for i := 0; i < 16; i++ {
 		if i >= len(prefixNameBytes) {
 			buffer.WriteByte(byte(0))
@@ -256,7 +260,7 @@ func (this *uploadSlaveFileRequest) marshal() ([]byte, error) {
 	}
 
 	// 6 bit fileExtName
-	fileExtNameBytes := bytes.NewBufferString(this.fileExtName).Bytes()
+	fileExtNameBytes := bytes.NewBufferString(tracker.fileExtName).Bytes()
 	for i := 0; i < 6; i++ {
 		if i >= len(fileExtNameBytes) {
 			buffer.WriteByte(byte(0))
@@ -266,28 +270,29 @@ func (this *uploadSlaveFileRequest) marshal() ([]byte, error) {
 	}
 
 	// master_filename_len bit master_name
-	masterFilenameBytes := bytes.NewBufferString(this.masterFilename).Bytes()
-	for i := 0; i < int(this.masterFilenameLen); i++ {
+	masterFilenameBytes := bytes.NewBufferString(tracker.masterFilename).Bytes()
+	for i := 0; i < int(tracker.masterFilenameLen); i++ {
 		buffer.WriteByte(masterFilenameBytes[i])
 	}
 	return buffer.Bytes(), nil
 }
 
+// UploadFileResponse 上传文件返回
 type UploadFileResponse struct {
 	GroupName    string
-	RemoteFileId string
+	RemoteFileID string
 }
 
 // recv_fmt: |-group_name(16)-remote_file_name(recv_size - 16)-|
-func (this *UploadFileResponse) unmarshal(data []byte) error {
+func (resp *UploadFileResponse) unmarshal(data []byte) error {
 	buff := bytes.NewBuffer(data)
 	var err error
-	this.GroupName, err = readCstr(buff, FDFS_GROUP_NAME_MAX_LEN)
+	resp.GroupName, err = readCstr(buff, FDFS_GROUP_NAME_MAX_LEN)
 	if err != nil {
 		return err
 	}
 	remoteFilename := string(data[len(data)-buff.Len():])
-	this.RemoteFileId = this.GroupName + "/" + remoteFilename
+	resp.RemoteFileID = resp.GroupName + "/" + remoteFilename
 	return nil
 }
 
@@ -297,11 +302,11 @@ type deleteFileRequest struct {
 }
 
 // #del_fmt: |-group_name(16)-filename(len)-|
-func (this *deleteFileRequest) marshal() ([]byte, error) {
+func (req *deleteFileRequest) marshal() ([]byte, error) {
 	buffer := new(bytes.Buffer)
 
 	// 16 bit groupName
-	groupNameBytes := bytes.NewBufferString(this.groupName).Bytes()
+	groupNameBytes := bytes.NewBufferString(req.groupName).Bytes()
 	for i := 0; i < 16; i++ {
 		if i >= len(groupNameBytes) {
 			buffer.WriteByte(byte(0))
@@ -311,27 +316,28 @@ func (this *deleteFileRequest) marshal() ([]byte, error) {
 	}
 
 	// remoteFilenameLen bit remoteFilename
-	remoteFilenameBytes := bytes.NewBufferString(this.remoteFilename).Bytes()
+	remoteFilenameBytes := bytes.NewBufferString(req.remoteFilename).Bytes()
 	for i := 0; i < len(remoteFilenameBytes); i++ {
 		buffer.WriteByte(remoteFilenameBytes[i])
 	}
 	return buffer.Bytes(), nil
 }
 
+// DeleteFileResponse 删除文件返回
 type DeleteFileResponse struct {
 	groupName      string
 	remoteFilename string
 }
 
 // recv_fmt: |-group_name(16)-remote_file_name(recv_size - 16)-|
-func (this *DeleteFileResponse) unmarshal(data []byte) error {
+func (resp *DeleteFileResponse) unmarshal(data []byte) error {
 	buff := bytes.NewBuffer(data)
 	var err error
-	this.groupName, err = readCstr(buff, FDFS_GROUP_NAME_MAX_LEN)
+	resp.groupName, err = readCstr(buff, FDFS_GROUP_NAME_MAX_LEN)
 	if err != nil {
 		return err
 	}
-	this.remoteFilename = string(data[len(data)-buff.Len():])
+	resp.remoteFilename = string(data[len(data)-buff.Len():])
 	return nil
 }
 
@@ -343,13 +349,13 @@ type downloadFileRequest struct {
 }
 
 // #down_fmt: |-offset(8)-download_bytes(8)-group_name(16)-remote_filename(len)-|
-func (this *downloadFileRequest) marshal() ([]byte, error) {
+func (req *downloadFileRequest) marshal() ([]byte, error) {
 	buffer := new(bytes.Buffer)
-	binary.Write(buffer, binary.BigEndian, this.offset)
-	binary.Write(buffer, binary.BigEndian, this.downloadSize)
+	binary.Write(buffer, binary.BigEndian, req.offset)
+	binary.Write(buffer, binary.BigEndian, req.downloadSize)
 
 	// 16 bit groupName
-	groupNameBytes := bytes.NewBufferString(this.groupName).Bytes()
+	groupNameBytes := bytes.NewBufferString(req.groupName).Bytes()
 	for i := 0; i < 16; i++ {
 		if i >= len(groupNameBytes) {
 			buffer.WriteByte(byte(0))
@@ -359,15 +365,16 @@ func (this *downloadFileRequest) marshal() ([]byte, error) {
 	}
 
 	// remoteFilenameLen bit remoteFilename
-	remoteFilenameBytes := bytes.NewBufferString(this.remoteFilename).Bytes()
+	remoteFilenameBytes := bytes.NewBufferString(req.remoteFilename).Bytes()
 	for i := 0; i < len(remoteFilenameBytes); i++ {
 		buffer.WriteByte(remoteFilenameBytes[i])
 	}
 	return buffer.Bytes(), nil
 }
 
+// DownloadFileResponse 下载文件返回
 type DownloadFileResponse struct {
-	RemoteFileId string
+	RemoteFileID string
 	Content      interface{}
 	DownloadSize int64
 }
