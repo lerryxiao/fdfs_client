@@ -1,4 +1,4 @@
-package fdfs_client
+package fdfsClient
 
 import (
 	"fmt"
@@ -43,8 +43,8 @@ func TestUploadByFilename(t *testing.T) {
 		t.Errorf("UploadByfilename error %s", err.Error())
 	}
 	t.Log(uploadResponse.GroupName)
-	t.Log(uploadResponse.RemoteFileId)
-	fdfsClient.DeleteFile(uploadResponse.RemoteFileId)
+	t.Log(uploadResponse.RemoteFileID)
+	fdfsClient.DeleteFile(uploadResponse.RemoteFileID)
 }
 
 func TestUploadByBuffer(t *testing.T) {
@@ -75,8 +75,8 @@ func TestUploadByBuffer(t *testing.T) {
 	}
 
 	t.Log(uploadResponse.GroupName)
-	t.Log(uploadResponse.RemoteFileId)
-	fdfsClient.DeleteFile(uploadResponse.RemoteFileId)
+	t.Log(uploadResponse.RemoteFileID)
+	fdfsClient.DeleteFile(uploadResponse.RemoteFileID)
 }
 
 func TestUploadSlaveByFilename(t *testing.T) {
@@ -91,18 +91,18 @@ func TestUploadSlaveByFilename(t *testing.T) {
 		t.Errorf("UploadByfilename error %s", err.Error())
 	}
 	t.Log(uploadResponse.GroupName)
-	t.Log(uploadResponse.RemoteFileId)
+	t.Log(uploadResponse.RemoteFileID)
 
-	masterFileID := uploadResponse.RemoteFileId
+	masterFileID := uploadResponse.RemoteFileID
 	uploadResponse, err = fdfsClient.UploadSlaveByFilename("testfile", masterFileID, "_test")
 	if err != nil {
 		t.Errorf("UploadByfilename error %s", err.Error())
 	}
 	t.Log(uploadResponse.GroupName)
-	t.Log(uploadResponse.RemoteFileId)
+	t.Log(uploadResponse.RemoteFileID)
 
 	fdfsClient.DeleteFile(masterFileID)
-	fdfsClient.DeleteFile(uploadResponse.RemoteFileId)
+	fdfsClient.DeleteFile(uploadResponse.RemoteFileID)
 }
 
 func TestDownloadToFile(t *testing.T) {
@@ -113,23 +113,23 @@ func TestDownloadToFile(t *testing.T) {
 	}
 
 	uploadResponse, err = fdfsClient.UploadByFilename("client.conf")
-	defer fdfsClient.DeleteFile(uploadResponse.RemoteFileId)
+	defer fdfsClient.DeleteFile(uploadResponse.RemoteFileID)
 	if err != nil {
 		t.Errorf("UploadByfilename error %s", err.Error())
 	}
 	t.Log(uploadResponse.GroupName)
-	t.Log(uploadResponse.RemoteFileId)
+	t.Log(uploadResponse.RemoteFileID)
 
 	var (
 		downloadResponse *DownloadFileResponse
-		localFilename    string = "download.txt"
 	)
-	downloadResponse, err = fdfsClient.DownloadToFile(localFilename, uploadResponse.RemoteFileId, 0, 0)
+	localFilename := "download.txt"
+	downloadResponse, err = fdfsClient.DownloadToFile(localFilename, uploadResponse.RemoteFileID, 0, 0)
 	if err != nil {
 		t.Errorf("DownloadToFile error %s", err.Error())
 	}
 	t.Log(downloadResponse.DownloadSize)
-	t.Log(downloadResponse.RemoteFileId)
+	t.Log(downloadResponse.RemoteFileID)
 }
 
 func TestDownloadToBuffer(t *testing.T) {
@@ -140,22 +140,22 @@ func TestDownloadToBuffer(t *testing.T) {
 	}
 
 	uploadResponse, err = fdfsClient.UploadByFilename("client.conf")
-	defer fdfsClient.DeleteFile(uploadResponse.RemoteFileId)
+	defer fdfsClient.DeleteFile(uploadResponse.RemoteFileID)
 	if err != nil {
 		t.Errorf("UploadByfilename error %s", err.Error())
 	}
 	t.Log(uploadResponse.GroupName)
-	t.Log(uploadResponse.RemoteFileId)
+	t.Log(uploadResponse.RemoteFileID)
 
 	var (
 		downloadResponse *DownloadFileResponse
 	)
-	downloadResponse, err = fdfsClient.DownloadToBuffer(uploadResponse.RemoteFileId, 0, 0)
+	downloadResponse, err = fdfsClient.DownloadToBuffer(uploadResponse.RemoteFileID, 0, 0)
 	if err != nil {
 		t.Errorf("DownloadToBuffer error %s", err.Error())
 	}
 	t.Log(downloadResponse.DownloadSize)
-	t.Log(downloadResponse.RemoteFileId)
+	t.Log(downloadResponse.RemoteFileID)
 }
 
 func BenchmarkUploadByBuffer(b *testing.B) {
@@ -188,7 +188,7 @@ func BenchmarkUploadByBuffer(b *testing.B) {
 			fmt.Printf("TestUploadByBuffer error %s", err.Error())
 		}
 
-		fdfsClient.DeleteFile(uploadResponse.RemoteFileId)
+		fdfsClient.DeleteFile(uploadResponse.RemoteFileID)
 	}
 }
 
@@ -207,7 +207,7 @@ func BenchmarkUploadByFilename(b *testing.B) {
 		if err != nil {
 			fmt.Printf("UploadByfilename error %s", err.Error())
 		}
-		err = fdfsClient.DeleteFile(uploadResponse.RemoteFileId)
+		err = fdfsClient.DeleteFile(uploadResponse.RemoteFileID)
 		if err != nil {
 			fmt.Printf("DeleteFile error %s", err.Error())
 		}
@@ -222,7 +222,7 @@ func BenchmarkDownloadToFile(b *testing.B) {
 	}
 
 	uploadResponse, err = fdfsClient.UploadByFilename("client.conf")
-	defer fdfsClient.DeleteFile(uploadResponse.RemoteFileId)
+	defer fdfsClient.DeleteFile(uploadResponse.RemoteFileID)
 	if err != nil {
 		fmt.Printf("UploadByfilename error %s", err.Error())
 	}
@@ -232,7 +232,7 @@ func BenchmarkDownloadToFile(b *testing.B) {
 
 	localFilename := "download.txt"
 	for i := 0; i < b.N; i++ {
-		_, err = fdfsClient.DownloadToFile(localFilename, uploadResponse.RemoteFileId, 0, 0)
+		_, err = fdfsClient.DownloadToFile(localFilename, uploadResponse.RemoteFileID, 0, 0)
 		if err != nil {
 			fmt.Printf("DownloadToFile error %s", err.Error())
 		}

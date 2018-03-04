@@ -1,4 +1,4 @@
-package fdfs_client
+package fdfsClient
 
 import (
 	"bytes"
