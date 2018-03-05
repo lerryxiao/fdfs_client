@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/weilaihui/goconfig/config"
+	"github.com/jslyzt/goconfig/config"
 )
 
 // Errno 错误
@@ -34,8 +34,14 @@ var (
 	ConfigFile *config.Config
 )
 
-func (parser *FdfsConfigParser) Read(filename string) (*config.Config, error) {
+// ReadFile 读取文件
+func (parser *FdfsConfigParser) ReadFile(filename string) (*config.Config, error) {
 	return config.ReadDefault(filename)
+}
+
+// ReadData 读取内容
+func (parser *FdfsConfigParser) ReadData(filename string) (*config.Config, error) {
+	return config.ReadDefaultValue(filename)
 }
 
 func fdfsCheckFile(filename string) error {

@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/jslyzt/goconfig/config"
 )
 
 var (
@@ -72,12 +74,23 @@ func init() {
 	}()
 }
 
-func getTrackerConf(confPath string) (*Tracker, error) {
+// GetTrackerConf 解析 tacker
+func GetTrackerConf(confPath, confData string) (*Tracker, error) {
+	var cf *config.Config
+	var err error
 	fc := &FdfsConfigParser{}
-	cf, err := fc.Read(confPath)
+	if len(confData) > 0 {
+		cf, err = fc.ReadData(confData)
+	} else {
+		cf, err = fc.ReadFile(confPath)
+	}
 	if err != nil {
 		return nil, err
 	}
+	if cf == nil {
+		return nil, nil
+	}
+
 	trackerListString, _ := cf.RawString("DEFAULT", "tracker_server")
 	trackerList := strings.Split(trackerListString, ",")
 
@@ -105,7 +118,7 @@ func getTrackerConf(confPath string) (*Tracker, error) {
 
 // NewFdfsClient 新fastdfs客户端
 func NewFdfsClient(confPath string) (*FdfsClient, error) {
-	tracker, err := getTrackerConf(confPath)
+	tracker, err := GetTrackerConf(confPath, "")
 	if err != nil {
 		return nil, err
 	}
