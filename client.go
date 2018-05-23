@@ -159,8 +159,11 @@ func (client *FdfsClient) UploadByFilename(filename string) (*UploadFileResponse
 	}
 
 	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	store := &StorageClient{storagePool}
+	if err != nil {
+		return nil, err
+	}
 
+	store := &StorageClient{storagePool}
 	return store.storageUploadByFilename(tc, storeServ, filename)
 }
 
@@ -173,8 +176,10 @@ func (client *FdfsClient) UploadByBuffer(filebuffer []byte, fileExtName string) 
 	}
 
 	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
+	if err != nil {
+		return nil, err
+	}
 	store := &StorageClient{storagePool}
-
 	return store.storageUploadByBuffer(tc, storeServ, filebuffer, fileExtName)
 }
 
@@ -198,8 +203,11 @@ func (client *FdfsClient) UploadSlaveByFilename(filename, remoteFileID, prefixNa
 	}
 
 	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	store := &StorageClient{storagePool}
+	if err != nil {
+		return nil, err
+	}
 
+	store := &StorageClient{storagePool}
 	return store.storageUploadSlaveByFilename(tc, storeServ, filename, prefixName, remoteFilename)
 }
 
@@ -219,8 +227,11 @@ func (client *FdfsClient) UploadSlaveByBuffer(filebuffer []byte, remoteFileID, f
 	}
 
 	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	store := &StorageClient{storagePool}
+	if err != nil {
+		return nil, err
+	}
 
+	store := &StorageClient{storagePool}
 	return store.storageUploadSlaveByBuffer(tc, storeServ, filebuffer, remoteFilename, fileExtName)
 }
 
@@ -237,8 +248,11 @@ func (client *FdfsClient) UploadAppenderByFilename(filename string) (*UploadFile
 	}
 
 	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	store := &StorageClient{storagePool}
+	if err != nil {
+		return nil, err
+	}
 
+	store := &StorageClient{storagePool}
 	return store.storageUploadAppenderByFilename(tc, storeServ, filename)
 }
 
@@ -251,8 +265,11 @@ func (client *FdfsClient) UploadAppenderByBuffer(filebuffer []byte, fileExtName 
 	}
 
 	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	store := &StorageClient{storagePool}
+	if err != nil {
+		return nil, err
+	}
 
+	store := &StorageClient{storagePool}
 	return store.storageUploadAppenderByBuffer(tc, storeServ, filebuffer, fileExtName)
 }
 
@@ -272,8 +289,11 @@ func (client *FdfsClient) DeleteFile(remoteFileID string) error {
 	}
 
 	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	store := &StorageClient{storagePool}
+	if err != nil {
+		return err
+	}
 
+	store := &StorageClient{storagePool}
 	return store.storageDeleteFile(tc, storeServ, remoteFilename)
 }
 
@@ -293,8 +313,11 @@ func (client *FdfsClient) DownloadToFile(localFilename string, remoteFileID stri
 	}
 
 	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	store := &StorageClient{storagePool}
+	if err != nil {
+		return nil, err
+	}
 
+	store := &StorageClient{storagePool}
 	return store.storageDownloadToFile(tc, storeServ, localFilename, offset, downloadSize, remoteFilename)
 }
 
@@ -314,8 +337,11 @@ func (client *FdfsClient) DownloadToBuffer(remoteFileID string, offset int64, do
 	}
 
 	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	store := &StorageClient{storagePool}
+	if err != nil {
+		return nil, err
+	}
 
+	store := &StorageClient{storagePool}
 	var fileBuffer []byte
 	return store.storageDownloadToBuffer(tc, storeServ, fileBuffer, offset, downloadSize, remoteFilename)
 }
