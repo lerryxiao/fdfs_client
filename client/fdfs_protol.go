@@ -1,4 +1,4 @@
-package fdfsClient
+package client
 
 import (
 	"bytes"
@@ -117,7 +117,7 @@ const (
 
 	FDFS_UPLOAD_BY_BUFFER   = 1
 	FDFS_UPLOAD_BY_FILENAME = 2
-	FDFS_UPLOAD_BY_FILE     = 3
+	FDFS_UPLOAD_BY_STREAM   = 3
 	FDFS_DOWNLOAD_TO_BUFFER = 1
 	FDFS_DOWNLOAD_TO_FILE   = 2
 

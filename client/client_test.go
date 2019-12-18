@@ -1,4 +1,4 @@
-package fdfsClient
+package client
 
 import (
 	"fmt"

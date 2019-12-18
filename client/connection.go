@@ -1,4 +1,4 @@
-package fdfsClient
+package client
 
 import (
 	"errors"
@@ -100,11 +100,10 @@ func (pool *ConnectionPool) Close() {
 		return
 	}
 
-	close(conns)
-
 	for conn := range conns {
-		conn.Close()
+		_ = conn.Close()
 	}
+	close(conns)
 }
 
 // Len 长度
@@ -167,10 +166,13 @@ func TCPSendData(conn net.Conn, bytesStream []byte) error {
 // TCPSendFile tcp发送文件
 func TCPSendFile(conn net.Conn, filename string) error {
 	file, err := os.Open(filename)
-	defer file.Close()
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		_ = file.Close()
+	}()
 
 	var fileSize int64
 	if fileInfo, err := file.Stat(); err == nil {
@@ -216,10 +218,13 @@ func TCPRecvResponse(conn net.Conn, bufferSize int64) ([]byte, int64, error) {
 // TCPRecvFile tcp接收文件
 func TCPRecvFile(conn net.Conn, localFilename string, bufferSize int64) (int64, error) {
 	file, err := os.Create(localFilename)
-	defer file.Close()
 	if err != nil {
 		return 0, err
 	}
+
+	defer func() {
+		_ = file.Close()
+	}()
 
 	recvBuff, total, err := TCPRecvResponse(conn, bufferSize)
 	if _, err := file.Write(recvBuff); err != nil {

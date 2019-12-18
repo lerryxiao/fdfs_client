@@ -1,4 +1,4 @@
-package fdfsClient
+package client
 
 import (
 	"errors"
@@ -28,11 +28,6 @@ func (e Errno) Error() string {
 
 // FdfsConfigParser 配置文件解析器
 type FdfsConfigParser struct{}
-
-var (
-	// ConfigFile 配置文件
-	ConfigFile *config.Config
-)
 
 // ReadFile 读取文件
 func (parser *FdfsConfigParser) ReadFile(filename string) (*config.Config, error) {

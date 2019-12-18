@@ -1,8 +1,9 @@
-package fdfsClient
+package client
 
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 )
@@ -12,6 +13,8 @@ type StorageClient struct {
 	pool *ConnectionPool
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// upload
 func (client *StorageClient) storageUploadByFilename(tc *TrackerClient,
 	storeServ *StorageServer, filename string) (*UploadFileResponse, error) {
 	fileInfo, err := os.Stat(filename)
@@ -34,6 +37,23 @@ func (client *StorageClient) storageUploadByBuffer(tc *TrackerClient,
 		STORAGE_PROTO_CMD_UPLOAD_FILE, "", "", fileExtName)
 }
 
+type ReadStream interface {
+	io.ReaderAt
+	io.Seeker
+}
+
+func (client *StorageClient) storageUploadByStream(tc *TrackerClient,
+	storeServ *StorageServer, stream ReadStream, fileExtName string, size int64) (*UploadFileResponse, error) {
+	if size <= 0 && stream != nil {
+		_, _ = stream.Seek(0, io.SeekEnd)
+		size, _ = stream.Seek(0, io.SeekStart)
+	}
+	return client.storageUploadFile(tc, storeServ, stream, size, FDFS_UPLOAD_BY_STREAM,
+		STORAGE_PROTO_CMD_UPLOAD_FILE, "", "", fileExtName)
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// upload slave
 func (client *StorageClient) storageUploadSlaveByFilename(tc *TrackerClient,
 	storeServ *StorageServer, filename string, prefixName string, remoteFileID string) (*UploadFileResponse, error) {
 	fileInfo, err := os.Stat(filename)
@@ -56,6 +76,18 @@ func (client *StorageClient) storageUploadSlaveByBuffer(tc *TrackerClient,
 		STORAGE_PROTO_CMD_UPLOAD_SLAVE_FILE, "", remoteFileID, fileExtName)
 }
 
+func (client *StorageClient) storageUploadSlaveByStream(tc *TrackerClient,
+	storeServ *StorageServer, stream ReadStream, remoteFileID string, fileExtName string, size int64) (*UploadFileResponse, error) {
+	if size <= 0 && stream != nil {
+		_, _ = stream.Seek(0, io.SeekEnd)
+		size, _ = stream.Seek(0, io.SeekStart)
+	}
+	return client.storageUploadFile(tc, storeServ, stream, size, FDFS_UPLOAD_BY_STREAM,
+		STORAGE_PROTO_CMD_UPLOAD_SLAVE_FILE, "", remoteFileID, fileExtName)
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// upload append
 func (client *StorageClient) storageUploadAppenderByFilename(tc *TrackerClient,
 	storeServ *StorageServer, filename string) (*UploadFileResponse, error) {
 	fileInfo, err := os.Stat(filename)
@@ -78,6 +110,18 @@ func (client *StorageClient) storageUploadAppenderByBuffer(tc *TrackerClient,
 		STORAGE_PROTO_CMD_UPLOAD_APPENDER_FILE, "", "", fileExtName)
 }
 
+func (client *StorageClient) storageUploadAppenderByStream(tc *TrackerClient,
+	storeServ *StorageServer, stream ReadStream, fileExtName string, size int64) (*UploadFileResponse, error) {
+	if size <= 0 && stream != nil {
+		_, _ = stream.Seek(0, io.SeekEnd)
+		size, _ = stream.Seek(0, io.SeekStart)
+	}
+	return client.storageUploadFile(tc, storeServ, stream, size, FDFS_UPLOAD_BY_STREAM,
+		STORAGE_PROTO_CMD_UPLOAD_APPENDER_FILE, "", "", fileExtName)
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 func (client *StorageClient) storageUploadFile(tc *TrackerClient,
 	storeServ *StorageServer, fileContent interface{}, fileSize int64, uploadType int,
 	cmd int8, masterFilename string, prefixName string, fileExtName string) (*UploadFileResponse, error) {
@@ -91,10 +135,13 @@ func (client *StorageClient) storageUploadFile(tc *TrackerClient,
 	)
 
 	conn, err = client.pool.Get()
-	defer conn.Close()
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	masterFilenameLen := int64(len(masterFilename))
 	if len(storeServ.groupName) > 0 && len(masterFilename) > 0 {
@@ -128,16 +175,44 @@ func (client *StorageClient) storageUploadFile(tc *TrackerClient,
 	if err != nil {
 		return nil, err
 	}
-	TCPSendData(conn, reqBuf)
+
+	err = TCPSendData(conn, reqBuf)
+	if err != nil {
+		return nil, err
+	}
 
 	switch uploadType {
 	case FDFS_UPLOAD_BY_FILENAME:
-		if filename, ok := fileContent.(string); ok {
-			err = TCPSendFile(conn, filename)
+		{
+			if filename, ok := fileContent.(string); ok {
+				err = TCPSendFile(conn, filename)
+			}
 		}
-	case FDFS_DOWNLOAD_TO_BUFFER:
-		if fileBuffer, ok := fileContent.([]byte); ok {
-			err = TCPSendData(conn, fileBuffer)
+	case FDFS_UPLOAD_BY_BUFFER:
+		{
+			if fileBuffer, ok := fileContent.([]byte); ok {
+				err = TCPSendData(conn, fileBuffer)
+			}
+		}
+	case FDFS_UPLOAD_BY_STREAM:
+		{
+			if fileStream, ok := fileContent.(ReadStream); ok == true && fileStream != nil {
+				var (
+					cahce   = make([]byte, 1024*1024*5) // 每次读写5m
+					readPos int64
+					readLen int
+				)
+				for ; readPos < fileSize; {
+					readLen, err = fileStream.ReadAt(cahce, readPos)
+					if err == nil && readLen > 0 {
+						err = TCPSendData(conn, cahce[0:readLen])
+						readPos += int64(readLen)
+					}
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
 		}
 	}
 	if err != nil {
@@ -172,10 +247,13 @@ func (client *StorageClient) storageDeleteFile(tc *TrackerClient, storeServ *Sto
 	)
 
 	conn, err = client.pool.Get()
-	defer conn.Close()
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	th := &trackerHeader{}
 	th.cmd = STORAGE_PROTO_CMD_DELETE_FILE
@@ -190,7 +268,11 @@ func (client *StorageClient) storageDeleteFile(tc *TrackerClient, storeServ *Sto
 	if err != nil {
 		return err
 	}
-	TCPSendData(conn, reqBuf)
+
+	err = TCPSendData(conn, reqBuf)
+	if err != nil {
+		return err
+	}
 
 	th.recvHeader(conn)
 	if th.status != 0 {
@@ -225,10 +307,13 @@ func (client *StorageClient) storageDownloadFile(tc *TrackerClient,
 	)
 
 	conn, err = client.pool.Get()
-	defer conn.Close()
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	th := &trackerHeader{}
 	th.cmd = STORAGE_PROTO_CMD_DOWNLOAD_FILE
@@ -244,7 +329,11 @@ func (client *StorageClient) storageDownloadFile(tc *TrackerClient,
 	if err != nil {
 		return nil, err
 	}
-	TCPSendData(conn, reqBuf)
+
+	err =TCPSendData(conn, reqBuf)
+	if err != nil {
+		return nil, err
+	}
 
 	th.recvHeader(conn)
 	if th.status != 0 {
