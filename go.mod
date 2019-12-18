@@ -1,4 +1,4 @@
-module github.com/lerryxiao/fdfs_client/client
+module github.com/lerryxiao/fdfs_client
 
 go 1.13
 
