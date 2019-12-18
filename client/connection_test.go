@@ -9,7 +9,7 @@ func getConn(pool *ConnectionPool) {
 	conn, err := pool.Get()
 	defer func() {
 		if conn != nil {
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 	if err != nil {

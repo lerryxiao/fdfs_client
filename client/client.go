@@ -146,131 +146,125 @@ func ColseFdfsClient() {
 	quit <- true
 }
 
-// UploadByFilename 更新文件
+func (client *FdfsClient) getUploadArg(gname ...string) (tc *TrackerClient, srv *StorageServer, store *StorageClient, err error){
+	tc = &TrackerClient{client.trackerPool}
+	if len(gname) <= 0 {
+		srv, err = tc.trackerQueryStorageStorWithoutGroup()
+	} else {
+		srv, err = tc.trackerQueryStorageStorWithGroup(gname[0])
+	}
+	if err != nil {
+		return
+	}
+	var storagePool *ConnectionPool
+	storagePool, err = client.getStoragePool(srv.ipAddr, srv.port)
+	if err != nil {
+		return
+	}
+	store = &StorageClient{storagePool}
+	return
+}
+
+// UploadByFilename 上传文件
 func (client *FdfsClient) UploadByFilename(filename string) (*UploadFileResponse, error) {
 	if err := fdfsCheckFile(filename); err != nil {
 		return nil, errors.New(err.Error() + "(uploading)")
 	}
-
-	tc := &TrackerClient{client.trackerPool}
-	storeServ, err := tc.trackerQueryStorageStorWithoutGroup()
+	tc, srv, store, err := client.getUploadArg()
 	if err != nil {
 		return nil, err
 	}
-
-	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	if err != nil {
-		return nil, err
-	}
-
-	store := &StorageClient{storagePool}
-	return store.storageUploadByFilename(tc, storeServ, filename)
+	return store.storageUploadByFilename(tc, srv, filename)
 }
 
-// UploadByBuffer 更新数据
+// UploadByBuffer 上传数据
 func (client *FdfsClient) UploadByBuffer(filebuffer []byte, fileExtName string) (*UploadFileResponse, error) {
-	tc := &TrackerClient{client.trackerPool}
-	storeServ, err := tc.trackerQueryStorageStorWithoutGroup()
+	tc, srv, store, err := client.getUploadArg()
 	if err != nil {
 		return nil, err
 	}
-
-	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	if err != nil {
-		return nil, err
-	}
-	store := &StorageClient{storagePool}
-	return store.storageUploadByBuffer(tc, storeServ, filebuffer, fileExtName)
+	return store.storageUploadByBuffer(tc, srv, filebuffer, fileExtName)
 }
 
-// UploadSlaveByFilename 更新从文件
+// UploadByStream 上传流
+func (client *FdfsClient) UploadByStream(stream ReadStream, size int64, fileExtName string) (*UploadFileResponse, error) {
+	tc, srv, store, err := client.getUploadArg()
+	if err != nil {
+		return nil, err
+	}
+	return store.storageUploadByStream(tc, srv, stream, fileExtName, size)
+}
+
+// UploadSlaveByFilename 上传从文件
 func (client *FdfsClient) UploadSlaveByFilename(filename, remoteFileID, prefixName string) (*UploadFileResponse, error) {
 	if err := fdfsCheckFile(filename); err != nil {
 		return nil, errors.New(err.Error() + "(uploading)")
 	}
-
 	tmp, err := splitRemoteFileID(remoteFileID)
 	if err != nil || len(tmp) != 2 {
 		return nil, err
 	}
-	groupName := tmp[0]
-	remoteFilename := tmp[1]
-
-	tc := &TrackerClient{client.trackerPool}
-	storeServ, err := tc.trackerQueryStorageStorWithGroup(groupName)
+	tc, srv, store, err := client.getUploadArg(tmp[0])
 	if err != nil {
 		return nil, err
 	}
-
-	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	if err != nil {
-		return nil, err
-	}
-
-	store := &StorageClient{storagePool}
-	return store.storageUploadSlaveByFilename(tc, storeServ, filename, prefixName, remoteFilename)
+	return store.storageUploadSlaveByFilename(tc, srv, filename, prefixName, tmp[1])
 }
 
-// UploadSlaveByBuffer 更新从数据
+// UploadSlaveByBuffer 上传从数据
 func (client *FdfsClient) UploadSlaveByBuffer(filebuffer []byte, remoteFileID, fileExtName string) (*UploadFileResponse, error) {
 	tmp, err := splitRemoteFileID(remoteFileID)
 	if err != nil || len(tmp) != 2 {
 		return nil, err
 	}
-	groupName := tmp[0]
-	remoteFilename := tmp[1]
-
-	tc := &TrackerClient{client.trackerPool}
-	storeServ, err := tc.trackerQueryStorageStorWithGroup(groupName)
+	tc, srv, store, err := client.getUploadArg(tmp[0])
 	if err != nil {
 		return nil, err
 	}
-
-	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	if err != nil {
-		return nil, err
-	}
-
-	store := &StorageClient{storagePool}
-	return store.storageUploadSlaveByBuffer(tc, storeServ, filebuffer, remoteFilename, fileExtName)
+	return store.storageUploadSlaveByBuffer(tc, srv, filebuffer, tmp[1], fileExtName)
 }
 
-// UploadAppenderByFilename 追加数据
+// UploadSlaveByStream 上传从流
+func (client *FdfsClient) UploadSlaveByStream(stream ReadStream, size int64, remoteFileID, fileExtName string) (*UploadFileResponse, error) {
+	tmp, err := splitRemoteFileID(remoteFileID)
+	if err != nil || len(tmp) != 2 {
+		return nil, err
+	}
+	tc, srv, store, err := client.getUploadArg(tmp[0])
+	if err != nil {
+		return nil, err
+	}
+	return store.storageUploadSlaveByStream(tc, srv, stream, tmp[1], fileExtName, size)
+}
+
+// UploadAppenderByFilename 追加文件
 func (client *FdfsClient) UploadAppenderByFilename(filename string) (*UploadFileResponse, error) {
 	if err := fdfsCheckFile(filename); err != nil {
 		return nil, errors.New(err.Error() + "(uploading)")
 	}
-
-	tc := &TrackerClient{client.trackerPool}
-	storeServ, err := tc.trackerQueryStorageStorWithoutGroup()
+	tc, srv, store, err := client.getUploadArg()
 	if err != nil {
 		return nil, err
 	}
-
-	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	if err != nil {
-		return nil, err
-	}
-
-	store := &StorageClient{storagePool}
-	return store.storageUploadAppenderByFilename(tc, storeServ, filename)
+	return store.storageUploadAppenderByFilename(tc, srv, filename)
 }
 
 // UploadAppenderByBuffer 追加数据
 func (client *FdfsClient) UploadAppenderByBuffer(filebuffer []byte, fileExtName string) (*UploadFileResponse, error) {
-	tc := &TrackerClient{client.trackerPool}
-	storeServ, err := tc.trackerQueryStorageStorWithoutGroup()
+	tc, srv, store, err := client.getUploadArg()
 	if err != nil {
 		return nil, err
 	}
+	return store.storageUploadAppenderByBuffer(tc, srv, filebuffer, fileExtName)
+}
 
-	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
+// UploadAppenderByStream 追加流
+func (client *FdfsClient) UploadAppenderByStream(stream ReadStream, size int64, fileExtName string) (*UploadFileResponse, error) {
+	tc, srv, store, err := client.getUploadArg()
 	if err != nil {
 		return nil, err
 	}
-
-	store := &StorageClient{storagePool}
-	return store.storageUploadAppenderByBuffer(tc, storeServ, filebuffer, fileExtName)
+	return store.storageUploadAppenderByStream(tc, srv, stream, fileExtName, size)
 }
 
 // DeleteFile 删除文件
@@ -279,22 +273,11 @@ func (client *FdfsClient) DeleteFile(remoteFileID string) error {
 	if err != nil || len(tmp) != 2 {
 		return err
 	}
-	groupName := tmp[0]
-	remoteFilename := tmp[1]
-
-	tc := &TrackerClient{client.trackerPool}
-	storeServ, err := tc.trackerQueryStorageUpdate(groupName, remoteFilename)
+	tc, srv, store, err := client.getUploadArg(tmp[0])
 	if err != nil {
 		return err
 	}
-
-	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	if err != nil {
-		return err
-	}
-
-	store := &StorageClient{storagePool}
-	return store.storageDeleteFile(tc, storeServ, remoteFilename)
+	return store.storageDeleteFile(tc, srv, tmp[1])
 }
 
 // DownloadToFile 下载文件
@@ -303,22 +286,11 @@ func (client *FdfsClient) DownloadToFile(localFilename string, remoteFileID stri
 	if err != nil || len(tmp) != 2 {
 		return nil, err
 	}
-	groupName := tmp[0]
-	remoteFilename := tmp[1]
-
-	tc := &TrackerClient{client.trackerPool}
-	storeServ, err := tc.trackerQueryStorageFetch(groupName, remoteFilename)
+	tc, srv, store, err := client.getUploadArg(tmp[0])
 	if err != nil {
 		return nil, err
 	}
-
-	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	if err != nil {
-		return nil, err
-	}
-
-	store := &StorageClient{storagePool}
-	return store.storageDownloadToFile(tc, storeServ, localFilename, offset, downloadSize, remoteFilename)
+	return store.storageDownloadToFile(tc, srv, localFilename, offset, downloadSize, tmp[1])
 }
 
 // DownloadToBuffer 下载文件
@@ -327,23 +299,12 @@ func (client *FdfsClient) DownloadToBuffer(remoteFileID string, offset int64, do
 	if err != nil || len(tmp) != 2 {
 		return nil, err
 	}
-	groupName := tmp[0]
-	remoteFilename := tmp[1]
-
-	tc := &TrackerClient{client.trackerPool}
-	storeServ, err := tc.trackerQueryStorageFetch(groupName, remoteFilename)
+	tc, srv, store, err := client.getUploadArg(tmp[0])
 	if err != nil {
 		return nil, err
 	}
-
-	storagePool, err := client.getStoragePool(storeServ.ipAddr, storeServ.port)
-	if err != nil {
-		return nil, err
-	}
-
-	store := &StorageClient{storagePool}
 	var fileBuffer []byte
-	return store.storageDownloadToBuffer(tc, storeServ, fileBuffer, offset, downloadSize, remoteFilename)
+	return store.storageDownloadToBuffer(tc, srv, fileBuffer, offset, downloadSize, tmp[1])
 }
 
 func (client *FdfsClient) getStoragePool(ipAddr string, port int) (*ConnectionPool, error) {

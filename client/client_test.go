@@ -10,16 +10,6 @@ var (
 	uploadResponse *UploadFileResponse
 )
 
-func TestParserFdfsConfig(t *testing.T) {
-	fc := &FdfsConfigParser{}
-	c, err := fc.Read("client.conf")
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	v, _ := c.String("DEFAULT", "base_path")
-	t.Log(v)
-}
 func TestNewFdfsClientByTracker(t *testing.T) {
 	tracker := &Tracker{
 		[]string{"10.0.1.32"},
@@ -39,12 +29,13 @@ func TestUploadByFilename(t *testing.T) {
 	}
 
 	uploadResponse, err = fdfsClient.UploadByFilename("client.conf")
-	if err != nil {
-		t.Errorf("UploadByfilename error %s", err.Error())
+	if err != nil || uploadResponse == nil {
+		t.Errorf("UploadByfilename error %v", err)
+	} else {
+		t.Log(uploadResponse.GroupName)
+		t.Log(uploadResponse.RemoteFileID)
+		_ = fdfsClient.DeleteFile(uploadResponse.RemoteFileID)
 	}
-	t.Log(uploadResponse.GroupName)
-	t.Log(uploadResponse.RemoteFileID)
-	fdfsClient.DeleteFile(uploadResponse.RemoteFileID)
 }
 
 func TestUploadByBuffer(t *testing.T) {
@@ -70,13 +61,13 @@ func TestUploadByBuffer(t *testing.T) {
 	}
 
 	uploadResponse, err = fdfsClient.UploadByBuffer(fileBuffer, "txt")
-	if err != nil {
-		t.Errorf("TestUploadByBuffer error %s", err.Error())
+	if err != nil || uploadResponse == nil {
+		t.Errorf("TestUploadByBuffer error %v", err)
+	} else {
+		t.Log(uploadResponse.GroupName)
+		t.Log(uploadResponse.RemoteFileID)
+		_ = fdfsClient.DeleteFile(uploadResponse.RemoteFileID)
 	}
-
-	t.Log(uploadResponse.GroupName)
-	t.Log(uploadResponse.RemoteFileID)
-	fdfsClient.DeleteFile(uploadResponse.RemoteFileID)
 }
 
 func TestUploadSlaveByFilename(t *testing.T) {
