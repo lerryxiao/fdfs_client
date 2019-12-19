@@ -208,11 +208,11 @@ func (client *StorageClient) storageUploadFile(tc *TrackerClient,
 				)
 				for readPos < fileSize {
 					readLen, err = fileStream.ReadAt(cahce, readPos)
-					if err == nil && readLen > 0 {
+					if readLen > 0 {
 						err = TCPSendData(conn, cahce[0:readLen])
 						readPos += int64(readLen)
 					}
-					if err != nil {
+					if err != nil && err != io.EOF {
 						return nil, err
 					}
 				}
