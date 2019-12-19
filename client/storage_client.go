@@ -37,6 +37,7 @@ func (client *StorageClient) storageUploadByBuffer(tc *TrackerClient,
 		STORAGE_PROTO_CMD_UPLOAD_FILE, "", "", fileExtName)
 }
 
+// ReadStream 读写stream
 type ReadStream interface {
 	io.ReaderAt
 	io.Seeker
@@ -45,8 +46,9 @@ type ReadStream interface {
 func (client *StorageClient) storageUploadByStream(tc *TrackerClient,
 	storeServ *StorageServer, stream ReadStream, fileExtName string, size int64) (*UploadFileResponse, error) {
 	if size <= 0 && stream != nil {
-		_, _ = stream.Seek(0, io.SeekEnd)
-		size, _ = stream.Seek(0, io.SeekStart)
+		_, _ = stream.Seek(0, io.SeekStart)
+		size, _ = stream.Seek(0, io.SeekEnd)
+		_, _ = stream.Seek(0, io.SeekStart)
 	}
 	return client.storageUploadFile(tc, storeServ, stream, size, FDFS_UPLOAD_BY_STREAM,
 		STORAGE_PROTO_CMD_UPLOAD_FILE, "", "", fileExtName)
@@ -79,8 +81,9 @@ func (client *StorageClient) storageUploadSlaveByBuffer(tc *TrackerClient,
 func (client *StorageClient) storageUploadSlaveByStream(tc *TrackerClient,
 	storeServ *StorageServer, stream ReadStream, remoteFileID string, fileExtName string, size int64) (*UploadFileResponse, error) {
 	if size <= 0 && stream != nil {
-		_, _ = stream.Seek(0, io.SeekEnd)
-		size, _ = stream.Seek(0, io.SeekStart)
+		_, _ = stream.Seek(0, io.SeekStart)
+		size, _ = stream.Seek(0, io.SeekEnd)
+		_, _ = stream.Seek(0, io.SeekStart)
 	}
 	return client.storageUploadFile(tc, storeServ, stream, size, FDFS_UPLOAD_BY_STREAM,
 		STORAGE_PROTO_CMD_UPLOAD_SLAVE_FILE, "", remoteFileID, fileExtName)
@@ -113,8 +116,9 @@ func (client *StorageClient) storageUploadAppenderByBuffer(tc *TrackerClient,
 func (client *StorageClient) storageUploadAppenderByStream(tc *TrackerClient,
 	storeServ *StorageServer, stream ReadStream, fileExtName string, size int64) (*UploadFileResponse, error) {
 	if size <= 0 && stream != nil {
-		_, _ = stream.Seek(0, io.SeekEnd)
-		size, _ = stream.Seek(0, io.SeekStart)
+		_, _ = stream.Seek(0, io.SeekStart)
+		size, _ = stream.Seek(0, io.SeekEnd)
+		_, _ = stream.Seek(0, io.SeekStart)
 	}
 	return client.storageUploadFile(tc, storeServ, stream, size, FDFS_UPLOAD_BY_STREAM,
 		STORAGE_PROTO_CMD_UPLOAD_APPENDER_FILE, "", "", fileExtName)
@@ -202,7 +206,7 @@ func (client *StorageClient) storageUploadFile(tc *TrackerClient,
 					readPos int64
 					readLen int
 				)
-				for ; readPos < fileSize; {
+				for readPos < fileSize {
 					readLen, err = fileStream.ReadAt(cahce, readPos)
 					if err == nil && readLen > 0 {
 						err = TCPSendData(conn, cahce[0:readLen])
@@ -330,7 +334,7 @@ func (client *StorageClient) storageDownloadFile(tc *TrackerClient,
 		return nil, err
 	}
 
-	err =TCPSendData(conn, reqBuf)
+	err = TCPSendData(conn, reqBuf)
 	if err != nil {
 		return nil, err
 	}
